@@ -10,7 +10,7 @@
  *
  *      Internal header for the Wii Allegro library.
  *
- *      By juvinious.
+ *      By Arikado.
  *
  *      See readme.txt for copyright information.
  */
@@ -24,6 +24,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void *xfb;
 
 typedef struct _WII_INFO            	/* info about Nintendo Wii specific settings */
 {

@@ -10,7 +10,7 @@
  *
  *      List of Wii drivers.
  *
- *      By juvinious and relpats_eht.
+ *      By Arikado
  *
  *      See readme.txt for copyright information.
  */

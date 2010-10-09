@@ -10,7 +10,7 @@
  *
  *      List of Wii drivers.
  *
- *      By juvinious and relpats_eht.
+ *      By Arikado.
  *
  *      See readme.txt for copyright information.
  */
@@ -22,6 +22,8 @@
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 
+extern bool installed_mouse;
+extern bool installed_joystick;
 
 #ifndef ALLEGRO_WII
 #error Something is wrong with the makefile
@@ -190,12 +192,18 @@ static int wii_joy_init()
     joy[i].button[27].name = get_config_text("Right");
   }
 
+  installed_joystick=true;
   // Go ahead and poll once
   return wii_joy_poll();
 }
 
 static void wii_joy_exit()
 {
+  installed_joystick=false;
+  if (!installed_mouse)
+  {
+    WPAD_Shutdown();
+  }
   return;
 }
 

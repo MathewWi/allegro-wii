@@ -23,34 +23,49 @@
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 
+extern bool installed_mouse;
+extern bool installed_joystick;
+
 #ifndef ALLEGRO_WII
 #error Something is wrong with the makefile
 #endif
 
-WPADData *wii_mouse_data;
+ir_t wii_mouse_data;
 
 static int wii_wiimouse_init()
 {
 	WPAD_Init();
 	WPAD_SetDataFormat(0, WPAD_FMT_BTNS_ACC_IR);
 	WPAD_SetVRes(0, 640, 480);
+	WPAD_SetIdleTimeout(200);
+  installed_mouse=true;
   return 2;
+}
+
+static void wii_wiimouse_exit()
+{
+  installed_mouse=false;
+  if (!installed_joystick)
+  {
+    WPAD_Shutdown();
+  }
+  return;
 }
 
 static void wii_wiimouse_poll()
 {
-	WPAD_ScanPads();
-  wii_mouse_data = WPAD_Data(0);
-  _mouse_x=wii_mouse_data->ir.x;
-  _mouse_y=wii_mouse_data->ir.y;
-  _mouse_z+=(wii_mouse_data->btns_h & WPAD_BUTTON_UP)?1:0;
-  _mouse_z-=(wii_mouse_data->btns_h & WPAD_BUTTON_DOWN)?1:0;
-  _mouse_w+=(wii_mouse_data->btns_h & WPAD_BUTTON_RIGHT)?1:0;
-  _mouse_w-=(wii_mouse_data->btns_h & WPAD_BUTTON_LEFT)?1:0;
+  WPAD_ScanPads();
+  WPAD_IR(0, &wii_mouse_data);
+  _mouse_x=wii_mouse_data.x;
+  _mouse_y=wii_mouse_data.y;
+  _mouse_z+=(WPAD_ButtonsHeld(0) & WPAD_BUTTON_UP)?1:0;
+  _mouse_z-=(WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN)?1:0;
+  _mouse_w+=(WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT)?1:0;
+  _mouse_w-=(WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT)?1:0;
 
-  _mouse_b=(wii_mouse_data->btns_h & WPAD_BUTTON_A)?1:0;
-  _mouse_b+=(wii_mouse_data->btns_h & WPAD_BUTTON_B)?2:0;
-  _mouse_b+=((wii_mouse_data->btns_h & WPAD_BUTTON_MINUS)||(wii_mouse_data->btns_h & WPAD_BUTTON_PLUS))?4:0;
+  _mouse_b=(WPAD_ButtonsHeld(0) & WPAD_BUTTON_A)?1:0;
+  _mouse_b+=(WPAD_ButtonsHeld(0) & WPAD_BUTTON_B)?2:0;
+  _mouse_b+=((WPAD_ButtonsHeld(0) & WPAD_BUTTON_MINUS)||(WPAD_ButtonsHeld(0) & WPAD_BUTTON_PLUS))?4:0;
 
   return;
 }
@@ -77,7 +92,7 @@ MOUSE_DRIVER mouse_wii =
 	empty_string,			/* AL_CONST char *desc; */
 	"Nintendo Wiimote",			/* AL_CONST char *ascii_name; */
 	wii_wiimouse_init,			/* AL_METHOD(int,  init, (void)); */
-	NULL,					/* AL_METHOD(void, exit, (void)); */
+	wii_wiimouse_exit,			/* AL_METHOD(void, exit, (void)); */
 	wii_wiimouse_poll,			/* AL_METHOD(void, poll, (void)); */
 	NULL,					/* AL_METHOD(void, timer_poll, (void)); */
 	wii_wiimouse_set_coord,		/* AL_METHOD(void, position, (int x, int y)); */
@@ -94,4 +109,3 @@ _DRIVER_INFO _mouse_driver_list[] =
    { MOUSE_WII,         &mouse_wii,         TRUE  },
    { MOUSEDRV_NONE,     &mousedrv_none,     FALSE }
 };
-
