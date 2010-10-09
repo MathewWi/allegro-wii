@@ -11,7 +11,7 @@
  *      Main header file for the Nintendo Wii Allegro library port.
  *      Any Wii Allegro specific function is declared here. 
  *
- *      By juvinious.
+ *      By Arikado.
  *
  *      See readme.txt for copyright information.
  */

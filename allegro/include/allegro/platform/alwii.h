@@ -10,7 +10,7 @@
  *
  *      Wii specific driver definitions.
  *
- *      By juvinious.
+ *      By Arikado.
  *
  *      See readme.txt for copyright information.
  */
@@ -66,6 +66,7 @@ AL_FUNC(void, al_wii_set, (int option, int value));
 AL_FUNC(int,  al_wii_get, (int option));
 AL_FUNC(AL_CONST char *,  al_wii_get_info, (int option));
 
+#if(0)
 /* List of WII specific settings */
 enum{
 	MAIN_SCREEN = 1,
@@ -76,7 +77,7 @@ enum{
 #define WII_ACTIVE_SCREEN				0
 #define WII_BG_WRAP						1
 #define WII_COLOR_DEPTH					2 // For internal use only
-
+#endif
 
 #ifdef __cplusplus
 }

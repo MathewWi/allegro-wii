@@ -8,9 +8,9 @@
  *                                           /\____/
  *                                           \_/__/
  *
- *      Configuration defines for use with QNX.
+ *      Configuration defines for use with the Nintendo Wii.
  *
- *      By juvinious.
+ *      By Arikado.
  *
  *      See readme.txt for copyright information.
  */
