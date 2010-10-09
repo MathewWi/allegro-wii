@@ -1,0 +1,117 @@
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(DEVKITARM)),)
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+endif
+
+include $(DEVKITARM)/ds_rules
+include makefile.lst
+
+#---------------------------------------------------------------------------------
+# BUILD is the directory where object files & intermediate files will be placed
+# SOURCES is a list of directories containing source code
+# INCLUDES is a list of directories containing extra header files
+# DATA is a list of directories containing binary files
+# all directories are relative to this makefile
+#---------------------------------------------------------------------------------
+BUILD		:=	obj
+SOURCES		:=	tests/nds/test.c
+INCLUDES	:=	./ ./include ./include/allegro ./include/allegro/inline ./include/allegro/internal ./include/allegro/platform ./tests/nds
+DATA		:=
+VPATH		:=	obj tests/nds
+
+#---------------------------------------------------------------------------------
+# list of directories containing libraries, this must be the top level containing
+# include and lib
+#---------------------------------------------------------------------------------
+LIBDIRS	:=	$(LIBNDS)
+
+#---------------------------------------------------------------------------------
+# options for code generation
+#---------------------------------------------------------------------------------
+ARCH	:=	-mthumb-interwork
+
+CFLAGS	:=	-g -Wall -O2 \
+		-mcpu=arm9tdmi -mtune=arm9tdmi -fomit-frame-pointer\
+		-ffast-math \
+		$(ARCH)
+
+# adding DEBUGMODE to activate allegro's assert and other trace messages, make those message/assert methods in ndssystem usefull
+CFLAGS	+=	$(INCLUDE) -DARM9 -DDEBUGMODE=2
+CXXFLAGS	:=	$(CFLAGS) -fno-rtti -fno-exceptions -fno-rtti
+
+
+ASFLAGS	:=	-g $(ARCH)
+LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -mno-fpu -Wl,-Map,$(notdir $*).map -L./lib/nds
+
+LIBS	:=	-lallegarm7 -lallegarm9 -lfat -lnds9 -lm
+ARM7BIN  :=	 lib/nds/liballegarm7.bin
+
+DEMODSGBA  :=      tests/nds/test.ds.gba
+DEMOSCNDS  :=      tests/nds/test.sc.nds
+DEMONDS  :=      tests/nds/test.nds
+DEMOBIN  :=      tests/nds/test.bin
+DEMOELF  :=      tests/nds/test.bin.elf
+
+# I have no idea why you are doing this at all. Its not needed and is what is confusing make.
+CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+
+OFILES	:=	$(subst tests/nds/,obj/,$(SOURCES:.c=.o))
+DFILES	:=	$(subst tests/nds/,obj/,$(SOURCES:.c=.d))
+
+INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include)
+
+LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) \
+
+OBJ_DIR		:=	obj
+
+#---------------------------------------------------------------------------------
+# use CXX for linking C++ projects, CC for standard C
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(CPPFILES)),)
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CC)
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CXX)
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
+
+.PHONY: clean
+
+#---------------------------------------------------------------------------------
+# main targets
+#---------------------------------------------------------------------------------
+$(DEMODSGBA)	:	$(DEMONDS)
+	@echo built ... $(notdir $@)
+	@dsbuild $<
+	@cp $@ $(DEMOSCNDS)
+
+$(DEMONDS)   :       $(DEMOBIN)
+	ndstool -c $@ -7 $(ARM7BIN) -9 $(DEMOBIN)
+
+$(DEMOBIN)      :       $(DEMOELF)
+	@$(OBJCOPY) -O binary $< $@
+	@echo built ... $(notdir $@)
+
+# ugly hack, make the exe depend on the libs, if they change, so does the program
+$(DEMOELF)	:	$(DFILES) $(OFILES) lib/nds/liballegarm7.a lib/nds/liballegarm9.a
+	@echo linking $(notdir $@) ...
+	@$(LD)  $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
+
+$(OBJ_DIR)/%.o : %.c
+	@echo $(notdir $<)
+	$(CC)  $(CFLAGS) $(INCLUDE) -c $< -o$@
+
+$(OBJ_DIR)/%.d : %.c
+	@echo Generating deps for $(notdir $<) ...
+	@$(CC) -MM $(CFLAGS) $(INCLUDE) -o $@ $<
+
+#---------------------------------------------------------------------------------
+clean:
+	@echo cleaning ...
+	rm -fr $(OFILES) $(DFILES) $(DEMOELF) $(DEMOBIN) $(DEMONDS) $(DEMODSGBA) .map $(DEMOSCNDS)
