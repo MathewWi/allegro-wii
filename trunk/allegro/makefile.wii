@@ -1,0 +1,134 @@
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(DEVKITPPC)),)
+$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC)
+endif
+
+include $(DEVKITPPC)/wii_rules
+
+include makefile.lst
+
+export TARGET		:=	$(shell basename $(CURDIR))
+export TOPDIR		:=	$(CURDIR)
+
+$(AR)			:=	$(DEVKITPRO)/devkitPPC/bin/powerpc-eabi-ar
+
+.PHONY: all clean
+	
+#---------------------------------------------------------------------------------
+# BUILD is the directory where object files & intermediate files will be placed
+# SOURCES is a list of directories containing source code
+# INCLUDES is a list of directories containing extra header files
+# DATA is a list of directories containing binary files
+# all directories are relative to this makefile
+#---------------------------------------------------------------------------------
+BUILD		:=	obj/wii
+SOURCES		:=	 $(ALLEGRO_SRC_FILES) $(ALLEGRO_SRC_C_FILES) $(ALLEGRO_SRC_WII_FILES)
+INCLUDES	:=	./ ./include ../libogc/include ./include/allegro ./include/allegro/inline \
+			./include/allegro/internal ./include/allegro/platform
+DATA		:=
+VPATH		:=	src src/misc obj/wii src/wii
+
+#---------------------------------------------------------------------------------
+# list of directories containing libraries, this must be the top level containing
+# include and lib
+#---------------------------------------------------------------------------------
+LIBDIRS	:=	$(LIBWII)
+
+#---------------------------------------------------------------------------------
+# options for code generation
+#---------------------------------------------------------------------------------
+ARCH	:=	
+
+CFLAGS	:=	-g -Wall -O2 -DALLEGRO_NO_ASM -DALLEGRO_LIB_BUILD -DDEBUGMODE=2 \
+		-mcpu=powerpc -mtune=powerpc -fomit-frame-pointer\
+		-ffast-math \
+		$(ARCH)
+
+CFLAGS	+=	$(INCLUDE) -DWII
+CXXFLAGS	:=	$(CFLAGS) -fno-rtti -fno-exceptions -fno-rtti
+
+
+ASFLAGS	:=	-g $(ARCH)
+LDFLAGS	=	-specs=wii.specs -g $(ARCH) -mno-fpu -Wl,-Map,$(notdir $*).map
+
+LIBS	:=	-lwii -lm
+
+WIILIB	:=	lib/wii/liballegwii.a
+
+# I have no idea why you are doing this at all. Its not needed and is what is confusing make.
+CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+
+OFILES	:=	$(subst src/,obj/,$(SOURCES:.c=.o))
+DFILES	:=	$(subst src/,obj/,$(SOURCES:.c=.d))
+
+INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include)
+
+LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+
+OBJ_WII_DIR 	:=	obj/wii
+OBJ_DIR		:=	obj
+OBJ_C_DIR	:=	obj/c
+OBJ_MISC_DIR	:=	obj/misc
+
+#---------------------------------------------------------------------------------
+# use CXX for linking C++ projects, CC for standard C
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(CPPFILES)),)
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CC)
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CXX)
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
+
+.PHONY: clean
+
+#---------------------------------------------------------------------------------
+# main targets
+#---------------------------------------------------------------------------------
+$(WIILIB)	:	$(DFILES) $(OFILES)
+	@echo linking $(notdir $@) ...
+	$(AR) -cr $@ $(OFILES)
+
+$(OBJ_DIR)/%.o : %.c
+	@echo $(notdir $<)
+	$(CC)  $(CFLAGS) $(INCLUDE) -c $< -o$@
+
+$(OBJ_C_DIR)/%.o : %.c
+	@echo $(notdir $<)
+	$(CC)  $(CFLAGS) $(INCLUDE) -c $< -o$@
+
+$(OBJ_MISC_DIR)/%.o : %.c
+	@echo $(notdir $<)
+	$(CC)  $(CFLAGS) $(INCLUDE) -c $< -o$@
+	
+$(OBJ_WII_DIR)/%.o : %.c
+	@echo $(notdir $<)
+	$(CC)  $(CFLAGS) $(INCLUDE) -c $< -o$@
+
+$(OBJ_DIR)/%.d : %.c
+	@echo Generating deps for $(notdir $<) ...
+	@$(CC) -MM $(CFLAGS) $(INCLUDE) -o $@ $<
+
+$(OBJ_C_DIR)/%.d : %.c
+	@echo Generating deps for $(notdir $<) ...
+	@$(CC) -MM $(CFLAGS) $(INCLUDE) -o $@ $<
+
+$(OBJ_MISC_DIR)/%.d : %.c
+	@echo Generating deps for $(notdir $<) ...
+	@$(CC) -MM $(CFLAGS) $(INCLUDE) -o $@ $<
+
+$(OBJ_WII_DIR)/%.d : %.c
+	@echo Generating deps for $(notdir $<) ...
+	@$(CC) -MM $(CFLAGS) $(INCLUDE) -o $@ $<
+
+#---------------------------------------------------------------------------------
+clean:
+	@echo cleaning ...
+	rm -fr $(OFILES) $(DFILES) $(WIILIB)
