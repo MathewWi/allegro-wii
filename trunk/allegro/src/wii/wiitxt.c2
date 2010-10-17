@@ -19,16 +19,20 @@
 #include "allegro.h"
 #include "allegro/internal/aintern.h"
 #include "allegro/platform/aintwii.h"
+#include <gccore.h>
 
 #ifndef ALLEGRO_WII
 #error Something is wrong with the makefile
 #endif
 
-/* GENERIC WII graphic drivers... implement more drivers later on */
-static GFX_VTABLE _wii_gen_vtable = 
+static struct BITMAP *wii_txt_init(int w, int h, int v_w, int v_h, int color_depth);
+static void wii_txt_exit(struct BITMAP *b);
+GFX_MODE_LIST *wii_gfx_fetch_mode_list();
+
+static GFX_VTABLE _wii_gfx_vtable = 
 {
-	0,	/*int color_depth;*/
-	0,	/*int mask_color;*/
+	0,		/*int color_depth;*/
+	0,		/*int mask_color;*/
 	NULL,	/*void *unwrite_bank;  C function on some machines, asm on i386 */
 	NULL,	/*AL_METHOD(void, set_clip, (struct BITMAP *bmp));*/
 	NULL,	/*AL_METHOD(void, acquire, (struct BITMAP *bmp));*/
@@ -91,66 +95,16 @@ static GFX_VTABLE _wii_gen_vtable =
 };
 
 
-static struct BITMAP *wii_gen_init(int w, int h, int v_w, int v_h, int color_depth)
+GFX_DRIVER gfx_txt_wii =
 {
-  return NULL;
-}
-
-void wii_gen_exit(struct BITMAP *b)
-{
-  return;
-}
-
-int wii_gen_scroll(int x, int y)
-{
-  return 0;
-}
-
-void wii_gen_vsync()
-{
-  return;
-}
-
-GFX_MODE_LIST *wii_gen_fetch_mode_list()
-{
-	GFX_MODE_LIST *list = _AL_MALLOC(sizeof(GFX_MODE_LIST));
-	if(!list)
-		return NULL;
-
-	list->num_modes = 3;
-
-	list->mode = _AL_MALLOC(sizeof(GFX_MODE_LIST*) * 2);
-	if(!list->mode) {
-		_AL_FREE(list);
-		return NULL;
-	}
-
-	list->mode[0].width = SCREEN_WIDTH;
-	list->mode[0].height = SCREEN_HEIGHT;
-	list->mode[0].bpp = 8;
-
-	list->mode[1].width = SCREEN_WIDTH;
-	list->mode[1].height = SCREEN_HEIGHT;
-	list->mode[1].bpp = 15;
-
-	list->mode[2].width = SCREEN_WIDTH;
-	list->mode[2].height = SCREEN_HEIGHT;
-	list->mode[2].bpp = 16;
-
-	return list;
-}
-
-
-GFX_DRIVER gfx_gen_wii =
-{
-	GFX_GEN_WII,				/* int  id; */
-	"Wii Generic", 				/* AL_CONST char *name; */
-	"Generic Wii gfx driver",	/* AL_CONST char *desc; */
-	"Wii Generic",	/* AL_CONST char *ascii_name; */
-	wii_gen_init,				/* AL_METHOD(struct BITMAP *, init, (int w, int h, int v_w, int v_h, int color_depth)); */
-	wii_gen_exit,				/* AL_METHOD(void, exit, (struct BITMAP *b)); */
-	wii_gen_scroll,				/* AL_METHOD(int, scroll, (int x, int y)); */
-	wii_gen_vsync,				/* AL_METHOD(void, vsync, (void)); */
+	GFX_TXT_WII,				/* int  id; */
+	"Wii Text", 				/* AL_CONST char *name; */
+	"Wii Text driver",			/* AL_CONST char *desc; */
+	"Wii Text",					/* AL_CONST char *ascii_name; */
+	wii_txt_init,				/* AL_METHOD(struct BITMAP *, init, (int w, int h, int v_w, int v_h, int color_depth)); */
+	wii_txt_exit,				/* AL_METHOD(void, exit, (struct BITMAP *b)); */
+	NULL,						/* AL_METHOD(int, scroll, (int x, int y)); */
+	NULL,						/* AL_METHOD(void, vsync, (void)); */
 	NULL,						/* AL_METHOD(void, set_palette, (AL_CONST struct RGB *p, int from, int to, int retracesync)); */
 	NULL,						/* AL_METHOD(int, request_scroll, (int x, int y)); */
 	NULL,						/* AL_METHOD(int, poll_scroll, (void)); */
@@ -169,14 +123,45 @@ GFX_DRIVER gfx_gen_wii =
 	NULL,						/* AL_METHOD(void, save_video_state, (void)); */
 	NULL,						/* AL_METHOD(void, restore_video_state, (void)); */
 	NULL,						/* AL_METHOD(void, set_blender_mode, (int mode, int r, int g, int b, int a)); */
-	wii_gen_fetch_mode_list,						/* AL_METHOD(GFX_MODE_LIST *, fetch_mode_list, (void)); */
-	640,						/* int w; */				/* physical (not virtual!) screen size */
-	480,						/* int h; */				/* physical (not virtual!) screen size */
-	1,							/* int linear; */			/* true if video memory is linear */
-	0,						/* long bank_size; */		/* bank size, in bytes */
+	wii_gfx_fetch_mode_list,	/* AL_METHOD(GFX_MODE_LIST *, fetch_mode_list, (void)); */
+	80,							/* int w; */				/* physical (not virtual!) screen size */
+	25,							/* int h; */				/* physical (not virtual!) screen size */
+	0,							/* int linear; */			/* true if video memory is linear */
+	0,							/* long bank_size; */		/* bank size, in bytes */
 	0,							/* long bank_gran; */		/* bank granularity, in bytes */
-	524288,						/* long vid_mem; */			/* video memory size, in bytes */
-	0x6000000,					/* long vid_phys_base; */	/* physical address of video memory */
+	0,							/* long vid_mem; */			/* video memory size, in bytes */
+	0,							/* long vid_phys_base; */	/* physical address of video memory */
 	0,							/* int windowed; */			/* true if driver runs windowed */
 };
 
+static struct BITMAP *wii_txt_init(int w, int h, int v_w, int v_h, int color_depth)
+{
+  return NULL;
+}
+
+static void wii_txt_exit(struct BITMAP *b)
+{
+  return;
+}
+
+GFX_MODE_LIST *wii_gfx_fetch_mode_list()
+{
+	GFX_MODE_LIST *list = malloc(sizeof(GFX_MODE_LIST));
+	if(!list)
+		return NULL;
+
+	list->num_modes = 1;
+
+	list->mode = malloc(sizeof(GFX_MODE_LIST*) * list->num_modes);
+	if(!list->mode)
+	{
+		_AL_FREE(list);
+		return NULL;
+	}
+
+	list->mode[0].width = gfx_txt_wii.w;
+	list->mode[0].height = gfx_txt_wii.h;
+	list->mode[0].bpp = 8;
+
+	return list;
+}

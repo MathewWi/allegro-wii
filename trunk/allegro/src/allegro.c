@@ -478,7 +478,16 @@ int _install_allegro_version_check(int system_id, int *errno_ptr,
  */
 void allegro_exit(void)
 {
+//long long i=0;
    while (exit_func_list) {
+
+/*
+allegro_message("Removing driver:  %s\n", exit_func_list->desc);
+for(i=0; i<100000000; i++)
+{
+  int j = rand()%100;
+}
+*/
       void (*func)(void) = exit_func_list->funcptr;
       _remove_exit_func(func);
       (*func)();

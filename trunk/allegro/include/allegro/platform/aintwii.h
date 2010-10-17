@@ -20,12 +20,15 @@
 #define AINTWII_H
 
 #include "wiialleg.h"
+#include <fat.h>
+#include <gccore.h>
+#include <wiikeyboard/keyboard.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void *xfb;
+extern u32 *xfb;
 
 typedef struct _WII_INFO            	/* info about Nintendo Wii specific settings */
 {

@@ -10,7 +10,7 @@
  *
  *      List of Wii drivers.
  *
- *      By juvinious.
+ *      By Arikado.
  *
  *      See readme.txt for copyright information.
  */
@@ -25,22 +25,156 @@
 #error Something is wrong with the makefile
 #endif
 
+
+
 static char *screen_surf;
-static BITMAP* wii_screen;
-static int lock_nesting = 0;
-static PALETTE palette;
-#define RENDER_DELAY (1000/60)  /* 70 Hz */
+#define RENDER_DELAY (1000/60)  /* 60 Hz */
+
+BITMAP* afb; //Allegro framebuffer
+
+//8-bit 332 RGB: rrrgggbb
+//16-bit: rrrrrggggggbbbbb
+//15-bit: 0rrrrrgggggbbbbb
+//24-bit: rrrrrrrrggggggggbbbbbbbb
+//32-bit: aaaaaaaarrrrrrrrggggggggbbbbbbbb
+
+/****************************************************************************
+* CvtRGB
+*
+* This function simply returns two RGB pixels as one Y1CbY2Cr.
+*****************************************************************************/
+u32 CvtRGB (u8 r1, u8 g1, u8 b1, u8 r2, u8 g2, u8 b2)
+{
+  int y1, cb1, cr1, y2, cb2, cr2, cb, cr;
+ 
+  y1 = (299 * r1 + 587 * g1 + 114 * b1) / 1000;
+  cb1 = (-16874 * r1 - 33126 * g1 + 50000 * b1 + 12800000) / 100000;
+  cr1 = (50000 * r1 - 41869 * g1 - 8131 * b1 + 12800000) / 100000;
+ 
+  y2 = (299 * r2 + 587 * g2 + 114 * b2) / 1000;
+  cb2 = (-16874 * r2 - 33126 * g2 + 50000 * b2 + 12800000) / 100000;
+  cr2 = (50000 * r2 - 41869 * g2 - 8131 * b2 + 12800000) / 100000;
+ 
+  cb = (cb1 + cb2) >> 1;
+  cr = (cr1 + cr2) >> 1;
+ 
+  return (y1 << 24) | (cb << 16) | (y2 << 8) | cr;
+}
+//copies the Allegro framebuffer (in 8-bit color) to the GX framebuffer
+void copy_8bit_afb_to_xfb()
+{
+  int i=0, x, y, c1, c2;
+  //u16 *afb2 = (u16 *)screen_surf;
+
+  //short *wfb = (short *)xfb;
+
+  for(y=0;y<480;++y)
+  {
+    for(x=0;x<320;++x)
+    {
+      c1=getpixel(screen, 2*x, y);
+      c2=getpixel(screen, 2*x+1, y);
+      xfb[i++]=CvtRGB (getr8(c1), getg8(c1), getb8(c1), getr8(c2), getg8(c2), getb8(c2));
+//      xfb[i++]=CvtRGB (getr8(screen->line[y][x*2]), getg8(screen->line[y][x*2]), getb8(screen->line[y][x*2]), getr8(screen->line[y][x*2+1]), getg8(screen->line[y][x*2+1]), getb8(screen->line[y][x*2+1]));
+    }
+  }
+}
+
+//copies the Allegro framebuffer (in 15-bit color) to the GX framebuffer
+void copy_15bit_afb_to_xfb()
+{
+  int i=0, x, y, c1, c2;
+  //u16 *afb2 = (u16 *)screen_surf;
+
+  //short *wfb = (short *)xfb;
+
+  for(y=0;y<480;++y)
+  {
+    for(x=0;x<320;++x)
+    {
+      c1=getpixel(screen, 2*x, y);
+      c2=getpixel(screen, 2*x+1, y);
+      xfb[i++]=CvtRGB (getr15(c1), getg15(c1), getb15(c1), getr15(c2), getg15(c2), getb15(c2));
+//      xfb[i++]=CvtRGB (getr15(screen->line[y][x*2]), getg15(screen->line[y][x*2]), getb15(screen->line[y][x*2]), getr15(screen->line[y][x*2+1]), getg15(screen->line[y][x*2+1]), getb15(screen->line[y][x*2+1]));
+    }
+  }
+}
+
+//copies the Allegro framebuffer (in 16-bit color) to the GX framebuffer
+void copy_16bit_afb_to_xfb()
+{
+  int i=0, x, y, c1, c2;
+  //u16 *afb2 = (u16 *)screen_surf;
+
+  //short *wfb = (short *)xfb;
+
+  for(y=0;y<480;++y)
+  {
+    for(x=0;x<320;++x)
+    {
+      c1=getpixel(screen, 2*x, y);
+      c2=getpixel(screen, 2*x+1, y);
+      xfb[i++]=CvtRGB (getr16(c1), getg16(c1), getb16(c1), getr16(c2), getg16(c2), getb16(c2));
+//      xfb[i++]=CvtRGB (getr16(screen->line[y][x*2]), getg16(screen->line[y][x*2]), getb16(screen->line[y][x*2]), getr16(screen->line[y][x*2+1]), getg16(screen->line[y][x*2+1]), getb16(screen->line[y][x*2+1]));
+    }
+  }
+}
+
+//copies the Allegro framebuffer (in 24-bit color) to the GX framebuffer
+void copy_24bit_afb_to_xfb()
+{
+  int i=0, x, y, c1, c2;
+  //u16 *afb2 = (u16 *)screen_surf;
+
+  //short *wfb = (short *)xfb;
+
+  for(y=0;y<480;++y)
+  {
+    for(x=0;x<320;++x)
+    {
+      c1=getpixel(screen, 2*x, y);
+      c2=getpixel(screen, 2*x+1, y);
+      xfb[i++]=CvtRGB (getr24(c1), getg24(c1), getb24(c1), getr24(c2), getg24(c2), getb24(c2));
+//      xfb[i++]=CvtRGB (getr24(screen->line[y][x*2]), getg24(screen->line[y][x*2]), getb24(screen->line[y][x*2]), getr24(screen->line[y][x*2+1]), getg24(screen->line[y][x*2+1]), getb24(screen->line[y][x*2+1]));
+    }
+  }
+}
+
+//copies the Allegro framebuffer (in 32-bit color) to the GX framebuffer
+void copy_32bit_afb_to_xfb()
+{
+  int i=0, x, y, c1, c2;
+  //u16 *afb2 = (u16 *)screen_surf;
+
+  //short *wfb = (short *)xfb;
+
+  for(y=0;y<480;++y)
+  {
+    for(x=0;x<320;++x)
+    {
+      c1=getpixel(screen, 2*x, y);
+      c2=getpixel(screen, 2*x+1, y);
+      xfb[i++]=CvtRGB (getr32(c1), getg32(c1), getb32(c1), getr32(c2), getg32(c2), getb32(c2));
+//      xfb[i++]=CvtRGB (getr32(screen->line[y][x*2]), getg32(screen->line[y][x*2]), getb32(screen->line[y][x*2]), getr32(screen->line[y][x*2+1]), getg32(screen->line[y][x*2+1]), getb32(screen->line[y][x*2+1]));
+    }
+  }
+}
+
 
 static struct BITMAP *wii_gfx_init(int w, int h, int v_w, int v_h, int color_depth);
 static void wii_gfx_exit(struct BITMAP *b);
 static int wii_gfx_scroll(int x, int y);
 static void wii_gfx_vsync();
+static void wii_gfx_set_palette(AL_CONST struct RGB *p, int from, int to, int retracesync);
 static struct BITMAP *wii_gfx_create_video_bitmap(int width, int height);
 static void wii_gfx_destroy_video_bitmap(struct BITMAP *bitmap);
 static int wii_gfx_show_video_bitmap(struct BITMAP *bitmap);
 static int wii_gfx_request_video_bitmap(struct BITMAP *bitmap);
 GFX_MODE_LIST *wii_gfx_fetch_mode_list();
 
+GXRModeObj *rmode = NULL;
+
+#if(0)  //might need this later, not sure
 static GFX_VTABLE _wii_gfx_vtable = 
 {
 	0,		/*int color_depth;*/
@@ -105,7 +239,7 @@ static GFX_VTABLE _wii_gfx_vtable =
 	NULL,	/*AL_METHOD(void, quad3d, (struct BITMAP *bmp, int type, struct BITMAP *texture, V3D *v1, V3D *v2, V3D *v3, V3D *v4));*/
 	NULL,	/*AL_METHOD(void, quad3d_f, (struct BITMAP *bmp, int type, struct BITMAP *texture, V3D_f *v1, V3D_f *v2, V3D_f *v3, V3D_f *v4));*/
 };
-
+#endif
 GFX_DRIVER gfx_wii =
 {
 	GFX_WII,					/* int  id; */
@@ -116,7 +250,7 @@ GFX_DRIVER gfx_wii =
 	wii_gfx_exit,				/* AL_METHOD(void, exit, (struct BITMAP *b)); */
 	wii_gfx_scroll,				/* AL_METHOD(int, scroll, (int x, int y)); */
 	wii_gfx_vsync,				/* AL_METHOD(void, vsync, (void)); */
-	NULL,						/* AL_METHOD(void, set_palette, (AL_CONST struct RGB *p, int from, int to, int retracesync)); */
+	wii_gfx_set_palette,	/* AL_METHOD(void, set_palette, (AL_CONST struct RGB *p, int from, int to, int retracesync)); */
 	NULL,						/* AL_METHOD(int, request_scroll, (int x, int y)); */
 	NULL,						/* AL_METHOD(int, poll_scroll, (void)); */
 	NULL,						/* AL_METHOD(void, enable_triple_buffer, (void)); */
@@ -145,61 +279,31 @@ GFX_DRIVER gfx_wii =
 	0,							/* int windowed; */			/* true if driver runs windowed */
 };
 
+/* wii_gfx_set_palette:
+ */
+static void wii_gfx_set_palette(AL_CONST struct RGB *p, int from, int to, int retracesync)
+{
+  return;
+}
+
 /* gfx_wii_lock:
  */
 static void gfx_wii_lock(struct BITMAP *bmp)
 {
-
-   /* arrange for drawing requests to pause when we are in the background */
-   lock_nesting++;
-   bmp->id |= BMP_ID_LOCKED;
+  return;
 }
-
-
-
-/* gfx_wii_autolock:
- */
-static void gfx_wii_autolock(struct BITMAP *bmp)
-{
-   gfx_wii_lock(bmp);
-   bmp->id |= BMP_ID_AUTOLOCK;
-}
-
- 
 
 /* gfx_wii_unlock:
  */
 static void gfx_wii_unlock(struct BITMAP *bmp)
 {
-   if (lock_nesting > 0) {
-      lock_nesting--;
-
-      if (!lock_nesting)
-         bmp->id &= ~BMP_ID_LOCKED;
-
-   }
+  return;
 }
 
-/* This is used only in asmlock.s and this file. */
-//char *wii_dirty_lines = NULL; /* used in WRITE_BANK() */
-
-uintptr_t gfx_wii_write_bank(BITMAP *bmp, int line)
-{
-//   wii_dirty_lines[bmp->y_ofs +line] = 1;
-
-   if (!(bmp->id & BMP_ID_LOCKED))
-      gfx_wii_autolock(bmp);
-
-   return (uintptr_t) bmp->line[line];
-}
 
 void gfx_wii_unwrite_bank(BITMAP *bmp)
 {
-   if (!(bmp->id & BMP_ID_AUTOLOCK))
-      return;
-
-   gfx_wii_unlock(bmp);
-   bmp->id &= ~ BMP_ID_AUTOLOCK;
+  return;
 }
 
 
@@ -208,29 +312,58 @@ void gfx_wii_unwrite_bank(BITMAP *bmp)
  */
 static void render_proc(void)
 {
-   if (!wii_screen) {
-      return;
-   }
-
-   if (_color_depth == 8)
+  if (!afb)
+  {
+    return;
+  }
+   switch (_color_depth)
    {
+     case 8:
+       copy_8bit_afb_to_xfb();
+       break;
+     case 15:
+       copy_15bit_afb_to_xfb();
+       break;
+     case 16:
+       copy_16bit_afb_to_xfb();
+       break;
+     case 24:
+       copy_24bit_afb_to_xfb();
+       break;
+     case 32:
+       copy_32bit_afb_to_xfb();
+       break;
    }
-//   blit_to_wii_screen(wii_screen, 0, 0, 0, 0, gfx_wii.w, gfx_wii.h);
 }
 
 static struct BITMAP *wii_gfx_init(int w, int h, int v_w, int v_h, int color_depth)
 {
-exit(0);
-  VIDEO_Init();
+  switch(color_depth)
+  {
+    case 8:
+      _screen_vtable = __linear_vtable8;
+      break;
+    case 15:
+      _screen_vtable = __linear_vtable15;
+      break;
+    case 16:
+      _screen_vtable = __linear_vtable16;
+      break;
+    case 24:
+      _screen_vtable = __linear_vtable24;
+      break;
+    case 32:
+      _screen_vtable = __linear_vtable32;
+      break;
+  }
 
-  w = 640;
-  h = 480;
+  screen_surf = _AL_MALLOC_ATOMIC(w * h * BYTES_PER_PIXEL(color_depth));
+  afb = _make_bitmap(w, h, (unsigned long)screen_surf, &gfx_wii, color_depth, w * BYTES_PER_PIXEL(color_depth));
 
 //  wii_screen = _make_bitmap(w, h, 0x6000000,     &gfx_hw_wii,         color_depth,     v_w * BYTES_PER_PIXEL(color_depth));
 //  wii_screen = _make_bitmap(w, h, uintptr_t addr, GFX_DRIVER *driver, int color_depth, int bpl)
 		
-//  wii_screen = _make_bitmap(w, h, 0x6000000,     &gfx_hw_wii,         color_depth,     v_w * BYTES_PER_PIXEL(color_depth));
-
+  clear_to_color(afb, 0);
 
   /* virtual screen are not supported */
   if ((v_w!=0 && v_w!=w) || (v_h!=0 && v_h!=h))
@@ -239,12 +372,6 @@ exit(0);
   gfx_wii.w = w;
   gfx_wii.h = h;
 
-  if(w!=640 || h!=480)
-  {
-    ustrzcpy(allegro_error, ALLEGRO_ERROR_SIZE, get_config_text("Resolution not supported"));
-    goto Error;
-  }
-
   /* the last flag serves as an end of loop delimiter */
   //wii_dirty_lines = _AL_MALLOC_ATOMIC((h+1) * sizeof(char));
   //ASSERT(wii_dirty_lines);
@@ -252,9 +379,6 @@ exit(0);
   //wii_dirty_lines[h] = 1;
 
   /* create the screen surface */
-  screen_surf = _AL_MALLOC_ATOMIC(w * h * BYTES_PER_PIXEL(color_depth));
-  wii_screen = _make_bitmap(w, h, (unsigned long)screen_surf, &gfx_wii, color_depth, w * BYTES_PER_PIXEL(color_depth));
-  wii_screen->write_bank = gfx_wii_write_bank; 
   _screen_vtable.acquire = gfx_wii_lock;
   _screen_vtable.release = gfx_wii_unlock;
   _screen_vtable.unwrite_bank = gfx_wii_unwrite_bank; 
@@ -262,9 +386,25 @@ exit(0);
   /* create render timer */
   install_int(render_proc, RENDER_DELAY);
 
-  return wii_screen;
+/*
+  while(1)
+  {
+    unsigned char* afbc = (unsigned char*)screen_surf;
+    int i=0, x1=0;
+    for(i=0;i<480*640;++i)
+    {
+      afbc[x1+1]=rand()%256;
+      afbc[x1+2]=rand()%256;
+      afbc[x1+3]=rand()%256;
+      x1+=4;
+    }
+//    copy_32bit_afb_to_xfb();
+//    VIDEO_WaitVSync();
+  }
+*/
+  return afb;
 
-  Error:
+//  Error:
   wii_gfx_exit(NULL);
 
   return NULL;
@@ -273,6 +413,7 @@ exit(0);
 
 static void wii_gfx_exit(struct BITMAP *b)
 {
+  _AL_FREE(screen_surf);
   return;
 }
 
@@ -283,6 +424,8 @@ static int wii_gfx_scroll(int x, int y)
 
 static void wii_gfx_vsync()
 {
+//  if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
+  VIDEO_WaitVSync();
   return;
 }
 
