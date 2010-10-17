@@ -34,7 +34,7 @@ VPATH		:=	src src/misc obj/wii src/wii
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=	$(LIBWII)
+LIBDIRS	:=	c:/devkitpro/libogc
 
 #---------------------------------------------------------------------------------
 # options for code generation

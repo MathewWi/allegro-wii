@@ -219,7 +219,6 @@ void set_palette(AL_CONST PALETTE p)
 }
 
 
-
 /* set_palette_range:
  *  Sets a part of the color palette.
  */

@@ -612,7 +612,6 @@ int set_gfx_mode(int card, int w, int h, int v_w, int v_h)
 }
 
 
-
 /* _set_gfx_mode:
  *  Called by set_gfx_mode(). Separated to make a clear difference between
  *  the virtual GFX_SAFE driver and the rest. The allow_config parameter,
@@ -721,7 +720,6 @@ static int _set_gfx_mode(int card, int w, int h, int v_w, int v_h, int allow_con
       TRACE(PREFIX_I "Graphic mode closed.\n");
       return 0;
    }
-//exit(0);
 
    /* now to the interesting part: let's try to find a graphics driver */
    usetc(allegro_error, 0);
@@ -834,7 +832,6 @@ static int _set_gfx_mode(int card, int w, int h, int v_w, int v_h, int allow_con
       _palette_color8[c] = c;
 
    set_palette(default_palette);
-
    if (_color_depth == 8) {
       gui_fg_color = 255;
       gui_mg_color = 8;
