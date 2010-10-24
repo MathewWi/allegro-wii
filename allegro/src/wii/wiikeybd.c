@@ -19,7 +19,6 @@
 #include "allegro.h"
 #include "allegro/internal/aintern.h"
 #include "allegro/platform/aintwii.h"
-#include <wiikeyboard/keyboard.h>
 
 #ifndef ALLEGRO_WII
 #error Something is wrong with the makefile
@@ -27,6 +26,49 @@
 
 keyboard_event ke;
 s32 res;
+
+/*
+typedef struct kbd_cond
+{
+  u8 modifiers;
+  u8 leds;
+  u8 keys[6];
+} kbd_cond_t;
+*/
+typedef struct kbd_state
+{
+  u8 modifiers;
+  u8 leds;
+  u8 matrix[256];
+  int shift_keys;
+} kbd_state_t;
+
+static int  wii_keyboard_init(void);
+static void wii_keyboard_exit(void);
+static void wii_keyboard_poll(void);
+//static void wii_keyboard_wait_for_input(void);
+//static void wii_keyboard_stop_waiting_for_input(void);
+
+
+KEYBOARD_DRIVER keyboard_wii =
+{
+  KEYBOARD_WII,
+  empty_string,
+  empty_string,
+  "Wii USB Keyboard",
+  TRUE,
+  wii_keyboard_init,
+  wii_keyboard_exit,
+  wii_keyboard_poll,
+  NULL,   // AL_METHOD(void, set_leds, (int leds));
+  NULL,   // AL_METHOD(void, set_rate, (int delay, int rate));
+  NULL, //wii_keyboard_wait_for_input,
+  NULL, //wii_keyboard_stop_waiting_for_input,
+  _pckey_scancode_to_ascii,
+  _pckey_scancode_to_name
+};
+
+static kbd_state_t wii_keyboard_current_state, wii_keyboard_old_state;
 
 const static unsigned char wii_keyboard_key[]=
 {
@@ -94,13 +136,11 @@ static void wii_keyboard_handler_shift(int pressed, int code)
   int scancode=wii_keyboard_shift[code];
   if (pressed)
   {
-    //  _handle_key_press(0, scancode);
     key[scancode]=1;
     _key_shifts|=wii_keyboard_shift[code];
   }
   else
   {
-    //  _handle_key_release(scancode);
     key[scancode]=0;
     _key_shifts&=~wii_keyboard_shift[code];
   }
@@ -109,52 +149,79 @@ static void wii_keyboard_handler_shift(int pressed, int code)
 
 static void wii_keyboard_poll(void)
 {
+  //kbd_state_t	*state;
+  int	i, shiftkeys;
+
+/*
+typedef struct kbd_state
+{
+  u8 modifiers;
+  u8 leds;
+  u8 matrix[256];
+  int shift_keys;
+} kbd_state_t;
+*/
+
   res = KEYBOARD_GetEvent(&ke);
-  if (res && ((ke.type == KEYBOARD_PRESSED) || (ke.type == KEYBOARD_RELEASED)))
+  if (!res)
   {
-    if(ke.keycode >= 224 && ke.keycode <= 231) // Shift, Ctrl, Alt, Win keys
+    return;
+  }
+  else
+  {
+    if ((ke.type == KEYBOARD_PRESSED)||(ke.type == KEYBOARD_RELEASED))
     {
-      wii_keyboard_handler_shift(ke.type == KEYBOARD_PRESSED, ke.keycode - 224);
+      wii_keyboard_current_state.matrix[ke.keycode]=(ke.type == KEYBOARD_PRESSED)?1:0;
+      // fill in shift keys
+      shiftkeys = wii_keyboard_current_state.shift_keys ^ wii_keyboard_old_state.shift_keys;
+      for(i=0;i<sizeof(wii_keyboard_shift);i++)
+      {
+        if ((shiftkeys>>i)&1)
+        {
+          wii_keyboard_handler_shift(((wii_keyboard_current_state.shift_keys>>i)&1),i);
+        }
+      }
+
+      for(i=0;i<sizeof(wii_keyboard_key);i++)
+      {
+        if (wii_keyboard_current_state.matrix[i]!=wii_keyboard_old_state.matrix[i])
+        {
+          wii_keyboard_handler_key(wii_keyboard_current_state.matrix[i],i);
+        }
+      }
     }
-    wii_keyboard_handler_key(ke.type == KEYBOARD_PRESSED, ke.keycode);
   }
 
+  wii_keyboard_old_state = wii_keyboard_current_state;
 }
+
+/*
+static void wii_keyboard_wait_for_input(void)
+{
+  return;
+}
+
+static void wii_keyboard_stop_waiting_for_input(void)
+{
+  return;
+}
+*/
 
 static int wii_keyboard_init(void)
 {
-  KEYBOARD_Init(NULL);   
+  KEYBOARD_Init(NULL);
+  _pckeys_init();
+  memset(&wii_keyboard_current_state,0,sizeof(wii_keyboard_current_state));
+  memset(&wii_keyboard_old_state,0,sizeof(wii_keyboard_old_state));
+  //install_int(wii_keyboard_poll, 1000/120); //twice a second just to be sure
   return 0;
 }
 
 
-
 static void wii_keyboard_exit(void)
 {
-  KEYBOARD_Deinit();
   return;
 }
-
-
-
-KEYBOARD_DRIVER keyboard_wii =
-{
-  KEYBOARD_WII,
-  empty_string,
-  empty_string,
-  "Wii USB Keyboard",
-  TRUE,
-  wii_keyboard_init,
-  wii_keyboard_exit,
-  wii_keyboard_poll,
-  NULL,   // AL_METHOD(void, set_leds, (int leds));
-  NULL,   // AL_METHOD(void, set_rate, (int delay, int rate));
-  NULL,   // wii_keyboard_wait_for_input,
-  NULL,   // wii_keyboard_stop_waiting_for_input,
-  _pckey_scancode_to_ascii,
-  _pckey_scancode_to_name
-};
-
 
 
 /* KEYBOARD DRIVER LIST */
