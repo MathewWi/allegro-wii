@@ -316,24 +316,24 @@ static void render_proc(void)
   {
     return;
   }
-   switch (_color_depth)
-   {
-     case 8:
-       copy_8bit_afb_to_xfb();
-       break;
-     case 15:
-       copy_15bit_afb_to_xfb();
-       break;
-     case 16:
-       copy_16bit_afb_to_xfb();
-       break;
-     case 24:
-       copy_24bit_afb_to_xfb();
-       break;
-     case 32:
-       copy_32bit_afb_to_xfb();
-       break;
-   }
+  switch (_color_depth)
+  {
+    case 8:
+      copy_8bit_afb_to_xfb();
+      break;
+    case 15:
+      copy_15bit_afb_to_xfb();
+      break;
+    case 16:
+      copy_16bit_afb_to_xfb();
+      break;
+    case 24:
+      copy_24bit_afb_to_xfb();
+      break;
+    case 32:
+      copy_32bit_afb_to_xfb();
+      break;
+  }
 }
 
 static struct BITMAP *wii_gfx_init(int w, int h, int v_w, int v_h, int color_depth)

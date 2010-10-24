@@ -25,13 +25,6 @@
 #endif
 
 
-/* THIS IS LIBFAT HEADER */
-// When compiling for Wii, make sure WII is defined
-#ifndef WII
-  #define WII
-#endif
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif

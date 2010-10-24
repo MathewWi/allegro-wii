@@ -54,7 +54,6 @@ static int wii_sys_init()
   {
     VIDEO_WaitVSync();
   }
-  
   return 0;
 }
 

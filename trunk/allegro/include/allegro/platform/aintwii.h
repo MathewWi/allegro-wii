@@ -20,7 +20,6 @@
 #define AINTWII_H
 
 #include "wiialleg.h"
-#include <fat.h>
 #include <gccore.h>
 #include <wiikeyboard/keyboard.h>
 
